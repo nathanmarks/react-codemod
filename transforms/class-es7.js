@@ -262,13 +262,53 @@ module.exports = (file, api, options) => {
       return [];
     }
 
-    return getInitialState.value.body.body.map(statement => {
-      if (statement.type === 'ReturnStatement') {
-        return j.classProperty(
+    return getInitialState.value.body.body.reduce((result, statement, index) => {
+      if (statement.type === 'ReturnStatement' && index === 0) {
+        return result.concat(j.classProperty(
           j.identifier('state'),
           statement.argument,
           null,
           false
+        ));
+      }
+
+      return result;
+    }, []);
+  };
+
+  const updatePropsAccess = getInitialState =>
+    getInitialState ?
+      j(getInitialState)
+        .find(j.MemberExpression, {
+          object: {
+            type: 'ThisExpression',
+          },
+          property: {
+            type: 'Identifier',
+            name: 'props',
+          },
+        })
+        .forEach(path => j(path).replaceWith(j.identifier('props')))
+        .size() > 0 :
+      false;
+
+  const inlineGetInitialState = getInitialState => {
+    if (!getInitialState) {
+      return [];
+    }
+
+    return getInitialState.value.body.body.map(statement => {
+      if (statement.type === 'ReturnStatement') {
+        return j.expressionStatement(
+          j.assignmentExpression(
+            '=',
+            j.memberExpression(
+              j.thisExpression(),
+              j.identifier('state'),
+              false
+            ),
+            statement.argument
+          )
         );
       }
 
@@ -276,17 +316,54 @@ module.exports = (file, api, options) => {
     });
   };
 
+  const createConstructorArgs = (hasPropsAccess) => {
+    return [j.identifier('props'), j.identifier('context')];
+  };
+
+  const createConstructor = (
+    getInitialState,
+    autobindFunctions
+  ) => {
+    if (!getInitialState && !autobindFunctions.length) {
+      return [];
+    }
+
+    const hasPropsAccess = updatePropsAccess(getInitialState);
+    return [
+      createMethodDefinition({
+        key: j.identifier('constructor'),
+        value: j.functionExpression(
+          null,
+          createConstructorArgs(hasPropsAccess),
+          j.blockStatement(
+            [].concat(
+              [
+                j.expressionStatement(
+                  j.callExpression(
+                    j.identifier('super'),
+                    [j.identifier('props'), j.identifier('context')]
+                  )
+                ),
+              ],
+              inlineGetInitialState(getInitialState)
+            )
+          )
+        ),
+      }),
+    ];
+  };
+
   const createESClass = (
     name,
     properties,
     getInitialState,
-    autobindFunctions,
     comments
   ) =>
     withComments(j.classDeclaration(
       name ? j.identifier(name) : null,
       j.classBody(
         [].concat(
+          createConstructor(getInitialState),
           properties
         )
       ),
@@ -391,7 +468,6 @@ module.exports = (file, api, options) => {
           return createMethodDefinition(n);
         })),
         getInitialState,
-        autobindFunctions,
         comments
       )
     );

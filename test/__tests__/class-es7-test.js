@@ -12,12 +12,12 @@
 
 describe('class-es7', () => {
 
-  it('transforms correctly', () => {
-    test('class-es7', 'class-es7-test');
-  });
-
-  // it('transforms named exports correctly', () => {
-  //   test('class-es7', 'class-es7-named-export');
+  // it('transforms correctly', () => {
+  //   test('class-es7', 'class-es7-test');
   // });
+
+  it('transforms complex initial state correctly', () => {
+    test('class-es7', 'class-es7-complex-initial-state');
+  });
 
 });

@@ -324,7 +324,10 @@ module.exports = (file, api, options) => {
     getInitialState,
     autobindFunctions
   ) => {
-    if (!getInitialState && !autobindFunctions.length) {
+    if (
+      (!getInitialState && !autobindFunctions.length) ||
+      getInitialState.value.body.body[0].type === 'ReturnStatement'
+    ) {
       return [];
     }
 

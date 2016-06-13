@@ -20,7 +20,7 @@ class Component extends React.Component {
     return nextProps.foo !== this.props.foo;
   }
 
-  doAutobind = text => {
+  doAutobind = (text) => {
     this.setState({
       foo: text,
     });
